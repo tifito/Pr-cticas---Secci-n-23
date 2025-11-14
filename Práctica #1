@@ -1,0 +1,33 @@
+/*
+
+Crear un trigger de borrado de alumnos de tipo before. Si se intenta borrar
+fuera del horario laboral debe rechazar el borrado con un signal de error
+45000.
+-El horario laboral será de 8 a 18
+-Además debemos guardar en la tabla auditorias el borrado si es
+satisfactorio
+PREGUNTA: Modificar el trigger para que sea de tipo after. ¿impedimos el borrado?
+
+*/
+
+
+
+
+
+delimiter //                           -- Cambia el delimitador para crear el trigger
+drop trigger if exists del_alumnos//   -- Elimina el trigger si ya existe
+create trigger del_alumnos before delete on alumnos   -- Crea un trigger BEFORE DELETE en la tabla alumnos
+for each row                           -- Se ejecuta por cada fila que se va a borrar
+begin
+ if current_time() not between '08:00:00' and '18:00:00' then   -- Verifica si la hora está fuera del horario laboral
+  signal sqlstate '45000';               -- Lanza un error y bloquea el borrado
+ end if;
+ insert into auditoria (tabla,operacion,usuario)                -- Inserta el registro en la tabla auditoria
+ values('ALUMNOS','DELETE',current_user());                    -- Guarda tabla, operación y usuario
+end//
+delimiter ;                                -- Vuelve al delimitador normal
+
+
+delete from alumnos where id = 1;          -- Prueba borrando un alumno
+
+select * from auditoria;                   -- Verifica si se registró la auditoría
