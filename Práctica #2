@@ -1,0 +1,48 @@
+/* 
+
+Crear un trigger llamado “insert_profesores” sobre profesores que al
+insertar un registro realice lo siguiente:
+- Pongan el nombre y apellidos en mayúsculas
+- Si la edad está en blanco, ponemos de forma automática 24
+- Debemos comprobar que el correo está OK. De lo contrario
+disparamos un error 45000. Para que esté bien debe tener una ‘@’
+y luego un punto en algún lugar
+-Insertar el insert en la tabla de auditoría
+PREGUNTA: Modificar el trigger para que sea de tipo after. ¿puede?
+
+
+*/
+
+
+delimiter //
+drop trigger if exists insert_profesores//                                                   -- Elimina el trigger si ya existe
+create trigger insert_profesores before insert on profesores                                 -- Crea el trigger antes del INSERT
+for each row
+begin
+ set NEW.nombre=upper(NEW.nombre);                                                          -- Convierte el nombre a mayúsculas
+
+ set NEW.apellidos=upper(NEW.apellidos);                                                    -- Convierte los apellidos a mayúsculas
+
+ if NEW.edad is null then                                                                   -- Si la edad viene vacía...
+  set NEW.edad=24;                                                                           -- Asigna edad 24 por defecto
+ end if;
+
+ if NEW.email not like '%@%.%' then                                                         -- Verifica que el email tenga @ y punto
+  signal sqlstate '45000';                                                                  -- Si no cumple → error 45000
+ end if;
+
+ insert into auditoria (tabla,operacion,usuario)                                             -- Registra el INSERT en auditoría
+ values('PROFESORES','INSERT',current_user());
+end//
+delimiter ;
+
+-- Con error de correo
+INSERT INTO PROFESORES                                                                       -- No tiene @ → dispara error
+values(904,'pepe','rodriguez','pepenada.com',null);
+
+-- Sin error de correo
+INSERT INTO PROFESORES                                                                       -- Email válido → inserta normal
+values(905,'pepe','rodriguez','pepe@nada.com',null);
+
+select * from profesores;                                                                    -- Ver los datos insertados
+select * from auditoria;                                                                     -- Ver los registros de auditoría
